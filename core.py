@@ -1,5 +1,6 @@
 from Tkinter import *
 import Tkinter as tk
+import ttk
 import zipfile
 import ImageTk
 import tkFont
@@ -306,89 +307,128 @@ right_frame.grid_columnconfigure(0, weight=1)
 right_frame.grid(pady=10,padx=10,column=1,row=0)
 right_frame.grid_propagate(False)
 
-button_frame = Frame(right_frame,width=270, height=h-27,  colormap="new", relief=FLAT ,borderwidth =4)
-button_frame.grid_rowconfigure(0, weight=1)
-button_frame.grid_columnconfigure(0, weight=1)
-button_frame.grid(pady=10,padx=10,column=0,row=0,sticky=N)
+button_frame_panel = Frame(right_frame, width=270, height=h - 27, colormap="new", relief=FLAT, borderwidth=4)
+button_frame_panel.grid_rowconfigure(0, weight=1)
+button_frame_panel.grid_columnconfigure(0, weight=1)
+button_frame_panel.grid(pady=10, padx=10, column=0, row=0, sticky=N)
+button_frame_panel.grid_propagate(False)
 
+dataset_frame = Frame(right_frame, width=270, height=h - 27, colormap="new", relief=FLAT, borderwidth=4)
+dataset_frame.grid_columnconfigure(0, weight=1)
+dataset_frame.grid(pady=10, padx=10, column=0, row=0, sticky=N)
+
+model_frame = Frame(right_frame, width=270, height=h - 27, colormap="new", relief=FLAT, borderwidth=4)
+model_frame.grid_rowconfigure(0, weight=1)
+model_frame.grid_columnconfigure(0, weight=1)
+model_frame.grid(pady=10, padx=10, column=0, row=0, sticky=N)
+
+network_frame = Frame(right_frame, width=270, height=h - 27, colormap="new", relief=FLAT, borderwidth=4)
+network_frame.grid_rowconfigure(0, weight=1)
+network_frame.grid_columnconfigure(0, weight=1)
+network_frame.grid(pady=10, padx=10, column=0, row=0, sticky=N)
+
+n = ttk.Notebook(button_frame_panel)
+n.add(dataset_frame,text="Dataset")
+n.add(model_frame,text="Model")
+n.add(network_frame,text="Network")
+n.grid(column=0,row=0,padx=10,columnspan=1,pady=0,sticky=W+E+N+S)
 
 index = 0
+l0 = Label(dataset_frame, text=" ",  width=20, height = 1)
+l0.grid(column=0,row=index,columnspan=2,rowspan=1,padx=30,pady=1,sticky=W+E+N+S)
+l0.grid_propagate(False)
+index+= 1
 
-l = Label(button_frame, text="Training folder",  width=20, height = 1)
+l = Label(dataset_frame, text="Training folder",  width=20, height = 1)
 l.grid(column=0,row=index,columnspan=2,rowspan=1,padx=30,pady=1,sticky=W+E+N+S)
 l.grid_propagate(False)
 index+= 1
 
-b = Button(button_frame, text="Set target folder", command=target_folder, width=20, height = 1)
+b = Button(dataset_frame, text="Set target folder", command=target_folder, width=20, height = 1)
 b.grid(column=0,row=index,columnspan=2,rowspan=1,padx=30,pady=1,sticky=W+E+N+S)
 b.grid_propagate(False)
 index+= 1
 
-en = Entry(button_frame)
+en = Entry(dataset_frame)
 en.grid(column=0,row=index,columnspan=2,rowspan=1,padx=30,pady=1,sticky=W+E+N+S)
 en.grid_propagate(False)
 index+= 1
 
-l = Label(button_frame, text="Testing folder",  width=20, height = 1)
+l = Label(dataset_frame, text="Testing folder",  width=20, height = 1)
 l.grid(column=0,row=index,columnspan=2,rowspan=1,padx=30,pady=1,sticky=W+E+N+S)
 l.grid_propagate(False)
 index+= 1
 
-b2 = Button(button_frame, text="Set target folder", command=target_folder2, width=20, height = 1)
+b2 = Button(dataset_frame, text="Set target folder", command=target_folder2, width=20, height = 1)
 b2.grid(column=0,row=index,columnspan=2,rowspan=1,padx=30,pady=1,sticky=W+E+N+S)
 b2.grid_propagate(False)
 index+= 1
 
-en2 = Entry(button_frame)
+en2 = Entry(dataset_frame)
 en2.grid(column=0,row=index,columnspan=2,rowspan=1,padx=30,pady=1,sticky=W+E+N+S)
 en2.grid_propagate(False)
 index+= 1
 
 
-l_batch = Label(button_frame, text="Batch Size",  width=10, height = 1)
+l_batch = Label(dataset_frame, text="Batch Size",  width=10, height = 1)
 l_batch.grid(column=0,row=index,columnspan=1,rowspan=1,padx=1,pady=1,sticky=E+W)
 l_batch.grid_propagate(False)
 
-l_batch = Label(button_frame, text="Iterations",  width=10, height = 1)
+l_batch = Label(dataset_frame, text="Iterations",  width=10, height = 1)
 l_batch.grid(column=1,row=index,columnspan=1,rowspan=1,padx=1,pady=1,sticky=E+W)
 l_batch.grid_propagate(False)
 index+=1
 
-en_batch = Entry(button_frame,width=5)
+en_batch = Entry(dataset_frame,width=5)
 en_batch.grid(column=0,row=index,columnspan=1,rowspan=1,padx=30,pady=1,sticky=W)
 en_batch.grid_propagate(False)
 
-en_iter = Entry(button_frame,width=5)
+en_iter = Entry(dataset_frame,width=5)
 en_iter.grid(column=1,row=index,columnspan=1,rowspan=1,padx=30,pady=1,sticky=E)
 en_iter.grid_propagate(False)
 index+= 1
 
-l_model = Label(button_frame, text="Model Name",  width=20, height = 1)
+l_model = Label(dataset_frame, text="Model Name",  width=20, height = 1)
 l_model.grid(column=0,row=index,columnspan=2,rowspan=1,padx=30,pady=1,sticky=W+E+N+S)
 l_model.grid_propagate(False)
 index+= 1
 
-en_model = Entry(button_frame)
+en_model = Entry(dataset_frame)
 en_model.grid(column=0,row=index,columnspan=2,rowspan=1,padx=30,pady=1,sticky=W+E+N+S)
 en_model.grid_propagate(False)
 index+= 1
-l_model = Label(button_frame, text="Image Size (w x h)",  width=20, height = 1)
+l_model = Label(dataset_frame, text="Image Size (w x h)",  width=20, height = 1)
 l_model.grid(column=0,row=index,columnspan=2,rowspan=1,padx=30,pady=1,sticky=W+E+N+S)
 l_model.grid_propagate(False)
 index+= 1
 
-en_size = Entry(button_frame,width=5)
+en_size = Entry(dataset_frame,width=5)
 en_size.grid(column=0,row=index,columnspan=1,rowspan=1,padx=30,pady=1,sticky=W)
 en_size.grid_propagate(False)
-en_size2 = Entry(button_frame,width=5)
+en_size2 = Entry(dataset_frame,width=5)
 en_size2.grid(column=1,row=index,columnspan=1,rowspan=1,padx=30,pady=1,sticky=E)
 en_size2.grid_propagate(False)
 index+= 1
-l_separation = Label(button_frame, text="Coding Tools",  width=20, height = 1)
+l_separation = Label(dataset_frame, text="Coding Tools",  width=20, height = 1)
 l_separation.grid(column=0,row=index,columnspan=2,rowspan=1,padx=30,pady=10,sticky=W+E+N+S)
 l_separation.grid_propagate(False)
 index+= 1
 
+
+def codeEvent(event):
+    global dd_variable
+    dd_variable.set("Code manipulation")
+    event_set = ["Xml Parser", "Input Output Variable Sizes", "Annotation to data","Other Code (Database)","Other Code (Network)"]
+    print event
+
+dd_variable = StringVar(dataset_frame)
+dd_variable.set("Code manipulation")
+dd = OptionMenu(dataset_frame, dd_variable, "Xml Parser", "Input Output Variable Sizes", "Annotation to data","Other Code (Database)","Other Code (Network)",command = codeEvent)
+dd.grid(column=0,row=index,padx=10,columnspan=2,pady=0,sticky=W+E+N+S)
+dd.grid_propagate(False)
+index+= 1
+
+'''
 b2 = Button(button_frame, text="Xml Parser", command=xml_parser_popup, width=20, height = 1)
 b2.grid(column=0,row=index,padx=10,columnspan=2,pady=0,sticky=W+E+N+S)
 b2.grid_propagate(False)
@@ -409,8 +449,8 @@ b2 = Button(button_frame, text="Other Code (Network)", command=xml_parser_popup_
 b2.grid(column=0,row=index,padx=10,columnspan=2,pady=0,sticky=W+E+N+S)
 b2.grid_propagate(False)
 index+=1
-
-b2 = Button(button_frame, text="Compile to python", command=compile_python, width=17, height = 1)
+'''
+b2 = Button(dataset_frame, text="Compile to python", command=compile_python, width=17, height = 1)
 b2.grid(column=0,row=index,padx=10,columnspan=2,pady=30,sticky=S)
 b2.grid_propagate(False)
 index+= 1
