@@ -196,7 +196,6 @@ def xml_parser_popup(index):
 
 nodes = []
 
-
 def visual_position(a,n=0):
     global myzoom, origin_location
 
@@ -208,24 +207,20 @@ def visual_position(a,n=0):
     return a
 
 def draw(module):
-    if module.name == "CNN layer":
-        if module.selected:
-            w.create_rectangle((module.position[0]-40+origin_location[0]),(module.position[1]-40+origin_location[1]), (module.position[0]+40+origin_location[0]), (module.position[1]+40+origin_location[1]), fill="yellow")
-            w.create_text((module.position[0]+origin_location[0]),(module.position[1]+origin_location[1]), fill="BLACK",text='CNN')
-        else:
-            w.create_rectangle((module.position[0]-40+origin_location[0]),(module.position[1]-40+origin_location[1]), (module.position[0]+40+origin_location[0]), (module.position[1]+40+origin_location[1]), fill="blue")
-            w.create_text((module.position[0]+origin_location[0]),(module.position[1]+origin_location[1]), fill="BLACK",text='CNN')
+    module.position = (module.position[0]/25)*25,(module.position[1]/25)*25
+    if module.selected:
+        w.create_rectangle((module.position[0]-module.width+origin_location[0]),(module.position[1]-40+origin_location[1]), (module.position[0]+module.width+origin_location[0]), (module.position[1]+40+origin_location[1]), fill="red")
+    else:
+        w.create_rectangle((module.position[0]-module.width+origin_location[0]),(module.position[1]-40+origin_location[1]), (module.position[0]+module.width+origin_location[0]), (module.position[1]+40+origin_location[1]), fill="blue")
 
-    w.create_oval((module.position[0]+origin_location[0]-5-40),(module.position[1]+origin_location[1]-5), (module.position[0]+origin_location[0]+5-40),(module.position[1]+origin_location[1]+5),fill="red")
-    w.create_oval((module.position[0]+origin_location[0]-5+40),(module.position[1]+origin_location[1]-5), (module.position[0]+origin_location[0]+5+40),(module.position[1]+origin_location[1]+5),fill="red")
-    if module.name == "Max pooling layer":
-        if module.selected:
-            w.create_rectangle((module.position[0]-20+origin_location[0]),(module.position[1]-40+origin_location[1]), (module.position[0]+20+origin_location[0]), (module.position[1]+40+origin_location[1]), fill="yellow")
-            w.create_text((module.position[0]+origin_location[0]),(module.position[1]+origin_location[1]), fill="BLACK",text='Max P.')
-        else:
-            w.create_rectangle((module.position[0]-20+origin_location[0]),(module.position[1]-40+origin_location[1]), (module.position[0]+20+origin_location[0]), (module.position[1]+40+origin_location[1]), fill="blue")
-            w.create_text((module.position[0]+origin_location[0]),(module.position[1]+origin_location[1]), fill="BLACK",text='Max P.')
+    w.create_text((module.position[0]+origin_location[0]),(module.position[1]+origin_location[1]), fill="yellow",text=module.name,font=("Purisa", 12,tkFont.BOLD))
+    w.create_oval((module.position[0]+origin_location[0]-5-module.width),(module.position[1]+origin_location[1]-5), (module.position[0]+origin_location[0]+5-module.width),(module.position[1]+origin_location[1]+5),fill="red")
+    w.create_oval((module.position[0]+origin_location[0]-5+module.width),(module.position[1]+origin_location[1]-5), (module.position[0]+origin_location[0]+5+module.width),(module.position[1]+origin_location[1]+5),fill="red")
 
+    for connection in module.connection_to:
+        target = connection.position
+        myline = w.create_line(module.position[0]+origin_location[0]+module.width,module.position[1]+origin_location[1],target[0]+origin_location[0]-connection.width,target[1]+origin_location[1],fill="red",width=4)
+        w.tag_raise(myline)
 
 def update():
     global w
@@ -241,11 +236,18 @@ def update():
 class Lmodule:
     name = "CNN module"
     position = (0,0)
+    width = 40
     selected = False
+    connection_to = set([])
+    connection_from = set([])
 
-    def __init__(self,loc,name):
+    def __init__(self,loc,name,width):
         self.name = name
         self.position = (loc[0],loc[1])
+        self.width = width
+        self.connection_to = set([])
+        self.connection_from = set([])
+        self.selected = False
 
 location = 0,0
 myzoom = 1
@@ -288,14 +290,11 @@ def canvas_motion(e):
 
     if mouse_pressed:
         for m in (nodes):
-            print distance(m.position,ee)
             if m.selected :
                 m.position = ee
 
     if slider == True:
         origin_location = origin_location[0]+(ee[0]-visual_position(location[0],0)), origin_location[1]+(ee[1]-visual_position(location[1],1))
-        print origin_location
-        print "SLIDING"
 
     location = e.x,e.y
 
@@ -309,34 +308,78 @@ def canvas_release(e):
     pass#print e.x,e.y
 
 def zoom(e):
-    global zoomer
-    print "ON"
-    zoomer = True
+    ee = visual_position(e.x,0),visual_position(e.y,1)
+    dist = []
+    connect = False
+    current_node = None
+    for m in nodes:
+        if m.selected:
+            connect = True
+            current_node = m
+        dist.append((distance(m.position,(ee[0],ee[1])),m))
+    dist.sort()
+    if dist[0][0] < 40:
+        if not dist[0][1].selected and connect:
+            dist[0][1].connection_from.add(current_node)
+            current_node.connection_to.add(dist[0][1])
+        elif dist[0][1].selected:
+            for m in dist[0][1].connection_to:
+                m.connection_from.remove(dist[0][1])
+            for m in dist[0][1].connection_from:
+                m.connection_to.remove(dist[0][1])
+
+            dist[0][1].connection_to = set([])
+            dist[0][1].connection_from = set([])
 
 def zoom_stop(e):
-    global zoomer
-    print "ONfsf"
-    zoomer = False
+    pass
 
 def create_cnn():
 
-    m = Lmodule((visual_position(location[0],0),visual_position(location[1],1)),"CNN layer")
+    m = Lmodule((visual_position(location[0],0),visual_position(location[1],1)),"CNN",40)
     nodes.append(m)
 
 
 def create_max_pooling():
 
-    m = Lmodule((visual_position(location[0],0),visual_position(location[1],1)),"Max pooling layer")
+    m = Lmodule((visual_position(location[0],0),visual_position(location[1],1)),"Mp",20)
     nodes.append(m)
+
+def create_relu():
+
+    m = Lmodule((visual_position(location[0],0),visual_position(location[1],1)),"Rlu",20)
+    nodes.append(m)
+
+
+def create_fully_connected():
+
+    m = Lmodule((visual_position(location[0],0),visual_position(location[1],1)),"FC",20)
+    nodes.append(m)
+
+def create_variational_autoencoder():
+
+    m = Lmodule((visual_position(location[0],0),visual_position(location[1],1)),"VA",50)
+    nodes.append(m)
+
+def create_custom():
+    m = Lmodule((visual_position(location[0],0),visual_position(location[1],1)),"CU",50)
+    nodes.append(m)
+
+
+m = Lmodule((visual_position(100,0),visual_position(350,1)),"Input",40)
+nodes.append(m)
+m = Lmodule((visual_position(600,0),visual_position(350,1)),"Output",40)
+nodes.append(m)
 
 
 # Canvas menu
 menu = Menu(root, tearoff=0)
 menu.add_command(label="CNN layer", command=create_cnn)
 menu.add_command(label="Max Pooling layer", command=create_max_pooling)
-menu.add_command(label="Relu layer", command=None)
-menu.add_command(label="Fully Connected layer", command=None)
-menu.add_command(label="Variational Autoencoder", command=None)
+menu.add_command(label="Relu layer", command=create_relu)
+menu.add_command(label="Fully Connected layer", command=create_fully_connected)
+menu.add_command(label="Variational Autoencoder", command=create_variational_autoencoder)
+menu.add_command(label="Custom layer", command=create_custom)
 
 def right_click_menu(e):
     menu.post(e.x_root,e.y_root)
