@@ -12,6 +12,13 @@ import pickle
 import os
 import xml.etree.ElementTree as ET
 
+# Indenting problems
+
+def indent(text, amount, ch=' '):
+    padding = amount * ch
+    return ''.join(padding+line for line in text.splitlines(True))
+
+
 # Tooltips
 
 class ToolTip(object):
@@ -91,44 +98,41 @@ def resize(s):
 target_directory = None
 target_directory_testing = None
 
+def multiple_t(n):
+    return "\t"*n
+
 def compile_python():
-    global en
-    myfile = open("load_database.txt","r")
+    global en, xml_reader
+    myfile = open("load_dataset_original.py","r")
     load_database_txt = myfile.read()
-    load_database_txt = load_database_txt.replace("<<Other>>", xml_reader_other)
-    load_database_txt = load_database_txt.replace("<<Replace_xml_parser>>", xml_reader)
 
-    myfile = open("network.txt","r")
-    network_txt = myfile.read()
-    network_txt = network_txt.replace("<<InputOutput>>", xml_reader_io) # Needs to happen before imsize
-    load_database_txt = load_database_txt.replace("<<ReadDatafromannotations>>", xml_reader_data) # Needs to happen before imsize
+
+    myfile = open("network_original.py","r")
+    model_txt = myfile.read()
+
+
+
+    load_database_txt = load_database_txt.replace("<<SET_LABELS>>", xml_reader[1].replace("\n","\n"+multiple_t(code_part[1][2])).replace("\t","    "))
+    load_database_txt = load_database_txt.replace("<<READ_XML_LABELS>>", xml_reader[0].replace("\n","\n"+multiple_t(code_part[0][2])).replace("\t","    "))
+    load_database_txt = load_database_txt.replace("<<OTHER>>", xml_reader[2].replace("\n","\n"+multiple_t(code_part[2][2])).replace("\t","    "))
     if en.get() == "":
-        if target_directory == None:
-            return
-        network_txt = network_txt.replace("<<TrainingFileFolder>>", target_directory)
+        target_directory = "<Replace with target directory>"
+        load_database_txt = load_database_txt.replace("<<DATA_FOLDER>>", "'"+str(target_directory)+"'")
     else:
-        network_txt = network_txt.replace("<<TrainingFileFolder>>", en.get())
-    if en2.get() == "":
-        if target_directory_testing == None:
-            return
-        network_txt = network_txt.replace("<<TestingFileFolder>>", target_directory_testing)
-    else:
-        network_txt = network_txt.replace("<<TestingFileFolder>>", en2.get())
-    network_txt = network_txt.replace("<<batch_size>>", str(en_batch.get()))
-    network_txt = network_txt.replace("<<max_iterations>>", str(en_iter.get()))
-    network_txt = network_txt.replace("<<model_name>>", "'"+str(en_model.get())+"'")
-    network_txt = network_txt.replace("<<imsize>>", str(en_size.get()))
-    network_txt = network_txt.replace("<<imsize2>>", str(en_size2.get()))
-    load_database_txt = load_database_txt.replace("<<imsize>>", str(en_size.get()))
-    load_database_txt = load_database_txt.replace("<<imsize2>>", str(en_size2.get()))
+        load_database_txt = load_database_txt.replace("<<DATA_FOLDER>>","'"+ str(en.get())+"'")
 
-    text_file = open("load_database.py", "w")
+    model_txt = model_txt.replace("<<TRAIN>>", eval_reader[0].replace("\n","\n"+multiple_t(code_part_eval[0][2])).replace("\t","    "))
+    model_txt = model_txt.replace("<<TEST>>", eval_reader[1].replace("\n","\n"+multiple_t(code_part_eval[1][2])).replace("\t","    "))
+    model_txt = model_txt.replace("<<OTHER>>", eval_reader[2].replace("\n","\n"+multiple_t(code_part_eval[2][2])).replace("\t","    "))
+
+    text_file = open("load_dataset.py", "w")
     text_file.write("%s" % load_database_txt)
     text_file.close()
 
     text_file = open("network.py", "w")
-    text_file.write("%s" % network_txt)
+    text_file.write("%s" % model_txt)
     text_file.close()
+
 
 
 def target_folder():
@@ -139,53 +143,36 @@ def target_folder2():
     global target_directory_testing
     target_directory_testing = fd.askdirectory()+str("/")
 
-
 # Xml Reader part
-xml_reader = "def read_annotations(image_file):\n# Given the path of an image file, create the category" \
-             "\n# label and give the maximum number of categories" \
-             "\n    transformed_xml_path = os.path.splitext('image_file')[0]+str('.xml')" \
-             "\n    e = xml.etree.ElementTree.parse(transformed_xml_path).getroot()"\
-             "\n    '''if this annotation should be skipped, set skip to True'''\n    skip = False"\
-             "\n    return 2,10,skip"
 
-xml_reader_io = "X = tf.placeholder('float', [None, <<imsize>>, <<imsize2>>, 3])\n"\
-                "Y = tf.placeholder('float', [None, max_categories])"
-xml_reader_data = "category, max_categories, skip = read_annotations(image_list[shuffled_index])\n"\
-                        "if skip:\n"\
-                        "    continue\n"\
-                        "I[datums,:,:,:] = np.asarray(misc.imresize(Image.open(image_list[shuffled_index]),[<<imsize>>,<<imsize2>>,3]))\n"\
-                        "y[datums,:] = one_hot(category,max_categories)"
-xml_reader_other = ""
-xml_reader_other2 = ""
+event_set = ["Read xml annotations", "Create labels","Other"]
+code_part = [("",[800,600]) for i in range(len(event_set))]
+code_part[0] =  "\ndef read_annotations(xml_path):" \
+                "\n\t" \
+                "\n\t# Given the path of the xml file, create the label"\
+                "\n\troot = xml.etree.ElementTree.parse(xml_path).getroot()"\
+                "\n\tcategory = root[0].attrib['name']"\
+                "\n"\
+                "\n\t# if this annotation should be skipped, set skip to True"\
+                "\n\tskip = False"\
+                "\n\treturn int(category),skip",[800,600],0
 
-text_xml = None
-text_xml_io = None
-text_xml_data = None
-text_xml_other = None
-text_xml_other2 = None
+code_part[1] =  "\n# We have read the xml annotations and category is available." \
+                "\n# Change the code below to set a proper target for the datum\n" \
+                "\ny[datums,:] = one_hot(category,max_labels=10)",[800,600],3
 
-def reader(e):
-    global text_xml, xml_reader
-    xml_reader = text_xml.get("1.0",END)
+code_part[2] =  "\n# Miscellaneous code goes here",[800,600],0
 
-def reader_io(e):
-    global text_xml_io, xml_reader_io
-    xml_reader_io = text_xml_io.get("1.0",END)
+# Xml getter
+code_text_widget = [None for i in range(len(code_part))]
+xml_reader = [code_part[i][0] for i in range(len(code_part))]
 
-def reader_data(e):
-    global text_xml_data, xml_reader_data
-    xml_reader_data = text_xml_data.get("1.0",END)
+def reader(e,index):
+    global code_text_getter, xml_reader,code_text_widget
+    xml_reader[index] = code_text_widget[index].get("1.0",END)
 
-def reader_other(e):
-    global text_xml_other, xml_reader_other
-    xml_reader_other = text_xml_other.get("1.0",END)
-def reader_other2(e):
-    global text_xml_other2, xml_reader_other2
-    xml_reader_other2 = text_xml_other2.get("1.0",END)
-
-
-def xml_parser_popup_io():
-    global io_reader, text_xml_io
+def xml_parser_popup(index):
+    global xml_reader, code_text_Getter
     toplevel = Toplevel()
     w,h = 650,400
     popup_frame = Frame(toplevel, width=w, height=h, bg="grey", colormap="new", relief=FLAT, borderwidth=4)
@@ -198,94 +185,163 @@ def xml_parser_popup_io():
     y = (hs/2) - (h/2)
     toplevel.geometry('%dx%d+%d+%d' % (w, h, x, y))
 
-    text_xml_io = Text(toplevel,width=w)
-    text_xml_io.grid(column=0,row=0)
-    text_xml_io.insert(END,xml_reader_io)
-    text_xml_io.bind('<KeyRelease>', reader_io)
-    text_xml_io.focus_set()
-
-def xml_parser_popup():
-    global xml_reader, text_xml
-    toplevel = Toplevel()
-    w,h = 650,400
-    popup_frame = Frame(toplevel, width=w, height=h, bg="grey", colormap="new", relief=FLAT, borderwidth=4)
-    popup_frame.grid()
-    ws = root.winfo_screenwidth() # width of the screen
-    hs = root.winfo_screenheight() # height of the screen
-
-    # calculate x and y coordinates for the Tk root window
-    x = (ws/2) - (w/2)
-    y = (hs/2) - (h/2)
-    toplevel.geometry('%dx%d+%d+%d' % (w, h, x, y))
-
-    text_xml = Text(toplevel,width=w)
-    text_xml.grid(column=0,row=0)
-    text_xml.insert(END,xml_reader)
-    text_xml.bind('<KeyRelease>', reader)
-    text_xml.focus_set()
-
-def xml_parser_popup_data():
-    global xml_reader_data, text_xml_data
-    toplevel = Toplevel()
-    w,h = 1024,400
-    popup_frame = Frame(toplevel, width=w, height=h, bg="grey", colormap="new", relief=FLAT, borderwidth=4)
-    popup_frame.grid()
-    ws = root.winfo_screenwidth() # width of the screen
-    hs = root.winfo_screenheight() # height of the screen
-
-    # calculate x and y coordinates for the Tk root window
-    x = (ws/2) - (w/2)
-    y = (hs/2) - (h/2)
-    toplevel.geometry('%dx%d+%d+%d' % (w, h, x, y))
-
-    text_xml_data = Text(toplevel,width=w)
-    text_xml_data.grid(column=0,row=0)
-    text_xml_data.insert(END,xml_reader_data)
-    text_xml_data.bind('<KeyRelease>', reader_data)
-    text_xml_data.focus_set()
+    code_text_widget[index] = Text(toplevel,width=w)
+    code_text_widget[index].grid(column=0,row=0)
+    code_text_widget[index].insert(END,xml_reader[index])
+    code_text_widget[index].bind('<KeyRelease>', lambda event, i=index: reader(event,i))
+    code_text_widget[index].focus_set()
 
 
-def xml_parser_popup_other():
-    global xml_reader_other, text_xml_other
-    toplevel = Toplevel()
-    w,h = 800,400
-    popup_frame = Frame(toplevel, width=w, height=h, bg="grey", colormap="new", relief=FLAT, borderwidth=4)
-    popup_frame.grid()
-    ws = root.winfo_screenwidth() # width of the screen
-    hs = root.winfo_screenheight() # height of the screen
+# Canvas nodes, redraws
 
-    # calculate x and y coordinates for the Tk root window
-    x = (ws/2) - (w/2)
-    y = (hs/2) - (h/2)
-    toplevel.geometry('%dx%d+%d+%d' % (w, h, x, y))
+nodes = []
 
-    text_xml_other = Text(toplevel,width=w)
-    text_xml_other.grid(column=0,row=0)
-    text_xml_other.insert(END,xml_reader_other)
-    text_xml_other.bind('<KeyRelease>', reader_other)
-    text_xml_other.focus_set()
 
-def xml_parser_popup_other2():
-    global xml_reader_other2, text_xml_other2
-    toplevel = Toplevel()
-    w,h = 800,400
-    popup_frame = Frame(toplevel, width=w, height=h, bg="grey", colormap="new", relief=FLAT, borderwidth=4)
-    popup_frame.grid()
-    ws = root.winfo_screenwidth() # width of the screen
-    hs = root.winfo_screenheight() # height of the screen
+def visual_position(a,n=0):
+    global myzoom, origin_location
 
-    # calculate x and y coordinates for the Tk root window
-    x = (ws/2) - (w/2)
-    y = (hs/2) - (h/2)
-    toplevel.geometry('%dx%d+%d+%d' % (w, h, x, y))
+    if n == 0:
+        a = (a-origin_location[0])
+    else:
+        a = (a-origin_location[1])
 
-    text_xml_other2 = Text(toplevel,width=w)
-    text_xml_other2.grid(column=0,row=0)
-    text_xml_other2.insert(END,xml_reader_other2)
-    text_xml_other2.bind('<KeyRelease>', reader_other2)
-    text_xml_other2.focus_set()
+    return a
+
+def draw(module):
+    if module.name == "CNN layer":
+        if module.selected:
+            w.create_rectangle((module.position[0]-40+origin_location[0]),(module.position[1]-40+origin_location[1]), (module.position[0]+40+origin_location[0]), (module.position[1]+40+origin_location[1]), fill="yellow")
+            w.create_text((module.position[0]+origin_location[0]),(module.position[1]+origin_location[1]), fill="BLACK",text='CNN')
+        else:
+            w.create_rectangle((module.position[0]-40+origin_location[0]),(module.position[1]-40+origin_location[1]), (module.position[0]+40+origin_location[0]), (module.position[1]+40+origin_location[1]), fill="blue")
+            w.create_text((module.position[0]+origin_location[0]),(module.position[1]+origin_location[1]), fill="BLACK",text='CNN')
+
+    w.create_oval((module.position[0]+origin_location[0]-5-40),(module.position[1]+origin_location[1]-5), (module.position[0]+origin_location[0]+5-40),(module.position[1]+origin_location[1]+5),fill="red")
+    w.create_oval((module.position[0]+origin_location[0]-5+40),(module.position[1]+origin_location[1]-5), (module.position[0]+origin_location[0]+5+40),(module.position[1]+origin_location[1]+5),fill="red")
+    if module.name == "Max pooling layer":
+        if module.selected:
+            w.create_rectangle((module.position[0]-20+origin_location[0]),(module.position[1]-40+origin_location[1]), (module.position[0]+20+origin_location[0]), (module.position[1]+40+origin_location[1]), fill="yellow")
+            w.create_text((module.position[0]+origin_location[0]),(module.position[1]+origin_location[1]), fill="BLACK",text='Max P.')
+        else:
+            w.create_rectangle((module.position[0]-20+origin_location[0]),(module.position[1]-40+origin_location[1]), (module.position[0]+20+origin_location[0]), (module.position[1]+40+origin_location[1]), fill="blue")
+            w.create_text((module.position[0]+origin_location[0]),(module.position[1]+origin_location[1]), fill="BLACK",text='Max P.')
+
+
+def update():
+    global w
+    w.after(10,update)
+
+    w.delete("all")
+    w.create_rectangle(0, 0, 700, 700, fill="black")
+    for module in nodes:
+        draw(module)
 
 # Create windows
+
+class Lmodule:
+    name = "CNN module"
+    position = (0,0)
+    selected = False
+
+    def __init__(self,loc,name):
+        self.name = name
+        self.position = (loc[0],loc[1])
+
+location = 0,0
+myzoom = 1
+import math
+def distance(p1,p2):
+    return math.sqrt((p1[0]-p2[0])**2+(p1[1]-p2[1])**2)
+zoomer = False
+mouse_pressed = False
+slider = False
+def canvas_click(e):
+    # Select module that is most close to click
+    global mouse_pressed, slider
+
+    ee = visual_position(e.x,0),visual_position(e.y,1)
+    mouse_pressed = True
+
+    dist = []
+    for m in (nodes):
+        dist.append((distance(m.position,(ee[0],ee[1])),m))
+        m.selected = False
+    dist.sort()
+    if dist[0][0] < 40:
+        dist[0][1].selected = True
+    else:
+        slider = True
+
+    pass#print e.x,e.y
+
+origin_location = 350,350
+
+def canvas_click_2(e):
+    global location
+    ee = visual_position(e.x,0),visual_position(e.y,1)
+    #location = ee[0],ee[1]
+    right_click_menu(e)
+def canvas_motion(e):
+    global mouse_pressed, zoomer, location, myzoom, origin_location
+
+    ee = visual_position(e.x,0),visual_position(e.y,1)
+
+    if mouse_pressed:
+        for m in (nodes):
+            print distance(m.position,ee)
+            if m.selected :
+                m.position = ee
+
+    if slider == True:
+        origin_location = origin_location[0]+(ee[0]-visual_position(location[0],0)), origin_location[1]+(ee[1]-visual_position(location[1],1))
+        print origin_location
+        print "SLIDING"
+
+    location = e.x,e.y
+
+    pass#print e.x,e.y
+def canvas_press(e):
+    pass#print e.x,e.y
+def canvas_release(e):
+    global mouse_pressed, slider
+    mouse_pressed = False
+    slider = False
+    pass#print e.x,e.y
+
+def zoom(e):
+    global zoomer
+    print "ON"
+    zoomer = True
+
+def zoom_stop(e):
+    global zoomer
+    print "ONfsf"
+    zoomer = False
+
+def create_cnn():
+
+    m = Lmodule((visual_position(location[0],0),visual_position(location[1],1)),"CNN layer")
+    nodes.append(m)
+
+
+def create_max_pooling():
+
+    m = Lmodule((visual_position(location[0],0),visual_position(location[1],1)),"Max pooling layer")
+    nodes.append(m)
+
+
+# Canvas menu
+menu = Menu(root, tearoff=0)
+menu.add_command(label="CNN layer", command=create_cnn)
+menu.add_command(label="Max Pooling layer", command=create_max_pooling)
+menu.add_command(label="Relu layer", command=None)
+menu.add_command(label="Fully Connected layer", command=None)
+menu.add_command(label="Variational Autoencoder", command=None)
+
+def right_click_menu(e):
+    menu.post(e.x_root,e.y_root)
+
+
 global_frame = Frame(root,width=w,height=h,relief=SUNKEN,borderwidth=4) # bg="black",
 global_frame.grid(column=0,row=0)
 global_frame.grid_propagate(False)
@@ -300,6 +356,15 @@ frame_canvas.grid_rowconfigure(0, weight=1)
 w = Canvas(frame_canvas, width=700, height=700)
 w.grid(column=0,row=0,columnspan=1,padx=10,pady=10)
 w.create_rectangle(0, 0, 700, 700, fill="black")
+w.bind('<Motion>', canvas_motion)
+w.bind('<ButtonPress-1>', canvas_press)
+w.bind('<Button-1>', canvas_click)
+w.bind('<ButtonRelease-1>', canvas_release)
+w.bind('<Button-3>', canvas_click_2)
+w.bind('<ButtonPress-2>', zoom)
+w.bind('<ButtonRelease-2>', zoom_stop)
+w.after(100,update)
+
 
 right_frame = Frame(global_frame,width=270, height=h-27,  colormap="new", relief=RIDGE ,borderwidth =4)
 right_frame.grid_rowconfigure(0, weight=1)
@@ -317,20 +382,10 @@ dataset_frame = Frame(right_frame, width=270, height=h - 27, colormap="new", rel
 dataset_frame.grid_columnconfigure(0, weight=1)
 dataset_frame.grid(pady=10, padx=10, column=0, row=0, sticky=N)
 
-model_frame = Frame(right_frame, width=270, height=h - 27, colormap="new", relief=FLAT, borderwidth=4)
-model_frame.grid_rowconfigure(0, weight=1)
-model_frame.grid_columnconfigure(0, weight=1)
-model_frame.grid(pady=10, padx=10, column=0, row=0, sticky=N)
 
-network_frame = Frame(right_frame, width=270, height=h - 27, colormap="new", relief=FLAT, borderwidth=4)
-network_frame.grid_rowconfigure(0, weight=1)
-network_frame.grid_columnconfigure(0, weight=1)
-network_frame.grid(pady=10, padx=10, column=0, row=0, sticky=N)
 
 n = ttk.Notebook(button_frame_panel)
-n.add(dataset_frame,text="Dataset")
-n.add(model_frame,text="Model")
-n.add(network_frame,text="Network")
+n.add(dataset_frame,text="Utilities")
 n.grid(column=0,row=0,padx=10,columnspan=1,pady=0,sticky=W+E+N+S)
 
 index = 0
@@ -339,119 +394,160 @@ l0.grid(column=0,row=index,columnspan=2,rowspan=1,padx=30,pady=1,sticky=W+E+N+S)
 l0.grid_propagate(False)
 index+= 1
 
-l = Label(dataset_frame, text="Training folder",  width=20, height = 1)
+l = Label(dataset_frame, text="Dataset folder",  width=20, height = 1)
 l.grid(column=0,row=index,columnspan=2,rowspan=1,padx=30,pady=1,sticky=W+E+N+S)
 l.grid_propagate(False)
 index+= 1
 
-b = Button(dataset_frame, text="Set target folder", command=target_folder, width=20, height = 1)
-b.grid(column=0,row=index,columnspan=2,rowspan=1,padx=30,pady=1,sticky=W+E+N+S)
-b.grid_propagate(False)
-index+= 1
 
 en = Entry(dataset_frame)
 en.grid(column=0,row=index,columnspan=2,rowspan=1,padx=30,pady=1,sticky=W+E+N+S)
 en.grid_propagate(False)
 index+= 1
 
-l = Label(dataset_frame, text="Testing folder",  width=20, height = 1)
+l_separation = Label(dataset_frame, text="Coding Tools",  width=20, height = 1)
+l_separation.grid(column=0,row=index,columnspan=2,rowspan=1,padx=30,pady=10,sticky=W+E+N+S)
+l_separation.grid_propagate(False)
+index+= 1
+
+# Xml Reader part
+event_set_model = ["Other"]
+code_part_model = [("",[800,600],0) for i in range(len(event_set_model))]
+code_part_model[0] =  "\n# Miscellaneous code goes here",[800,600],0
+
+# Xml getter
+code_text_widget_model = [None for i in range(len(code_part_model))]
+model_reader = [code_part_model[i][0] for i in range(len(code_part_model))]
+
+def reader(e,index):
+    global code_text_getter, model_reader,code_text_widget_model
+    model_reader[index] = code_text_widget_model[index].get("1.0",END)
+
+def network_model_popup(index):
+    global model_reader, code_text_Getter
+    toplevel = Toplevel()
+    w,h = 650,400
+    popup_frame = Frame(toplevel, width=w, height=h, bg="grey", colormap="new", relief=FLAT, borderwidth=4)
+    popup_frame.grid()
+    ws = root.winfo_screenwidth() # width of the screen
+    hs = root.winfo_screenheight() # height of the screen
+
+    # calculate x and y coordinates for the Tk root window
+    x = (ws/2) - (w/2)
+    y = (hs/2) - (h/2)
+    toplevel.geometry('%dx%d+%d+%d' % (w, h, x, y))
+
+    code_text_widget_model[index] = Text(toplevel,width=w)
+    code_text_widget_model[index].grid(column=0,row=0)
+    code_text_widget_model[index].insert(END,model_reader[index])
+    code_text_widget_model[index].bind('<KeyRelease>', lambda event, i=index: reader(event,i))
+    code_text_widget_model[index].focus_set()
+
+def codeEvent(event):
+    global dd_variable, event_set
+    dd_variable.set("Code")
+    index = event_set.index(event)
+    xml_parser_popup(index)
+    print event
+
+dd_variable = StringVar(dataset_frame)
+dd_variable.set("Code")
+dd = OptionMenu(dataset_frame, dd_variable, *event_set,command = codeEvent)
+dd.grid(column=0,row=index,padx=30,columnspan=2,pady=0,sticky=W+E+N+S)
+dd.grid_propagate(False)
+index+= 1
+
+# Model panel  ######################################################################################################
+#index = 0
+
+
+
+
+# Evaluate panel ######################################################################################################
+#index = 0
+
+
+# Evaluator Part
+
+# You need to define the train_op operator
+
+event_set_eval = ["Train","Test","Other"]
+code_part_eval = [("",[800,450],0) for i in range(len(event_set_eval))]
+code_part_eval[0] = "\nwith tf.Session() as sess:"\
+                    "\n    # you need to initialize all variables"\
+                    "\n    init = tf.initialize_all_variables()"\
+                    "\n    saver = tf.train.Saver()"\
+                    "\n    sess.run(init)"\
+                    "\n    batch_size = 32"\
+                    "\n    input_shape = [28,28,1]"\
+                    "\n    output_shape = [10]"\
+                    "\n    for i in range(1000):"\
+                    "\n        print i, '/',1000"\
+                    "\n        training_batch = load_database.return_batch(batch_size=batch_size,mymode='training',input_shape = input_shape,output_shape = output_shape)"\
+                    "\n        sess.run(train_op, feed_dict={X: training_batch[0], Y: training_batch[1]})" \
+                    "\n    save_path = saver.save(sess, './models/<<MODEL_NAME>>'+str(i)+'.ckpt')",[1024,450],0
+
+
+code_part_eval[2] =  "\n# Miscellaneous code goes here",[800,600],0
+
+# Xml getter
+
+l = Label(dataset_frame, text="Model name",  width=20, height =1)
 l.grid(column=0,row=index,columnspan=2,rowspan=1,padx=30,pady=1,sticky=W+E+N+S)
 l.grid_propagate(False)
-index+= 1
-
-b2 = Button(dataset_frame, text="Set target folder", command=target_folder2, width=20, height = 1)
-b2.grid(column=0,row=index,columnspan=2,rowspan=1,padx=30,pady=1,sticky=W+E+N+S)
-b2.grid_propagate(False)
-index+= 1
-
-en2 = Entry(dataset_frame)
-en2.grid(column=0,row=index,columnspan=2,rowspan=1,padx=30,pady=1,sticky=W+E+N+S)
-en2.grid_propagate(False)
-index+= 1
-
-
-l_batch = Label(dataset_frame, text="Batch Size",  width=10, height = 1)
-l_batch.grid(column=0,row=index,columnspan=1,rowspan=1,padx=1,pady=1,sticky=E+W)
-l_batch.grid_propagate(False)
-
-l_batch = Label(dataset_frame, text="Iterations",  width=10, height = 1)
-l_batch.grid(column=1,row=index,columnspan=1,rowspan=1,padx=1,pady=1,sticky=E+W)
-l_batch.grid_propagate(False)
-index+=1
-
-en_batch = Entry(dataset_frame,width=5)
-en_batch.grid(column=0,row=index,columnspan=1,rowspan=1,padx=30,pady=1,sticky=W)
-en_batch.grid_propagate(False)
-
-en_iter = Entry(dataset_frame,width=5)
-en_iter.grid(column=1,row=index,columnspan=1,rowspan=1,padx=30,pady=1,sticky=E)
-en_iter.grid_propagate(False)
-index+= 1
-
-l_model = Label(dataset_frame, text="Model Name",  width=20, height = 1)
-l_model.grid(column=0,row=index,columnspan=2,rowspan=1,padx=30,pady=1,sticky=W+E+N+S)
-l_model.grid_propagate(False)
 index+= 1
 
 en_model = Entry(dataset_frame)
 en_model.grid(column=0,row=index,columnspan=2,rowspan=1,padx=30,pady=1,sticky=W+E+N+S)
 en_model.grid_propagate(False)
 index+= 1
-l_model = Label(dataset_frame, text="Image Size (w x h)",  width=20, height = 1)
-l_model.grid(column=0,row=index,columnspan=2,rowspan=1,padx=30,pady=1,sticky=W+E+N+S)
-l_model.grid_propagate(False)
-index+= 1
 
-en_size = Entry(dataset_frame,width=5)
-en_size.grid(column=0,row=index,columnspan=1,rowspan=1,padx=30,pady=1,sticky=W)
-en_size.grid_propagate(False)
-en_size2 = Entry(dataset_frame,width=5)
-en_size2.grid(column=1,row=index,columnspan=1,rowspan=1,padx=30,pady=1,sticky=E)
-en_size2.grid_propagate(False)
-index+= 1
+code_text_widget_eval = [None for i in range(len(code_part_eval))]
+eval_reader = [code_part_eval[i][0] for i in range(len(code_part_eval))]
+
 l_separation = Label(dataset_frame, text="Coding Tools",  width=20, height = 1)
 l_separation.grid(column=0,row=index,columnspan=2,rowspan=1,padx=30,pady=10,sticky=W+E+N+S)
 l_separation.grid_propagate(False)
 index+= 1
 
 
-def codeEvent(event):
-    global dd_variable
-    dd_variable.set("Code manipulation")
-    event_set = ["Xml Parser", "Input Output Variable Sizes", "Annotation to data","Other Code (Database)","Other Code (Network)"]
+def eval_popup(index):
+    toplevel = Toplevel()
+    print code_part_eval[index][1][0]
+    w,h = code_part_eval[index][1][0],code_part_eval[index][1][1]
+    popup_frame = Frame(toplevel, width=w, height=h, bg="grey", colormap="new", relief=FLAT, borderwidth=4)
+    popup_frame.grid()
+    ws = root.winfo_screenwidth() # width of the screen
+    hs = root.winfo_screenheight() # height of the screen
+
+    # calculate x and y coordinates for the Tk root window
+    x = (ws/2) - (w/2)
+    y = (hs/2) - (h/2)
+    toplevel.geometry('%dx%d+%d+%d' % (w, h, x, y))
+
+    code_text_widget_eval[index] = Text(toplevel,width=w)
+    code_text_widget_eval[index].grid(column=0,row=0)
+    code_text_widget_eval[index].insert(END,eval_reader[index])
+    code_text_widget_eval[index].bind('<KeyRelease>', lambda event, i=index: reader(event,i))
+    code_text_widget_eval[index].focus_set()
+
+def codeEvent_eval(event):
+    global dd3_variable, event_set_eval
+    dd3_variable.set("Code")
+    index = event_set_eval.index(event)
+    eval_popup(index)
     print event
 
-dd_variable = StringVar(dataset_frame)
-dd_variable.set("Code manipulation")
-dd = OptionMenu(dataset_frame, dd_variable, "Xml Parser", "Input Output Variable Sizes", "Annotation to data","Other Code (Database)","Other Code (Network)",command = codeEvent)
-dd.grid(column=0,row=index,padx=10,columnspan=2,pady=0,sticky=W+E+N+S)
-dd.grid_propagate(False)
+dd3_variable = StringVar(dataset_frame)
+dd3_variable.set("Code")
+dd3 = OptionMenu(dataset_frame, dd3_variable, *event_set_eval,command = codeEvent_eval)
+dd3.grid(column=0,row=index,padx=30,columnspan=2,pady=0,sticky=W+E+N+S)
+dd3.grid_propagate(False)
 index+= 1
 
-'''
-b2 = Button(button_frame, text="Xml Parser", command=xml_parser_popup, width=20, height = 1)
-b2.grid(column=0,row=index,padx=10,columnspan=2,pady=0,sticky=W+E+N+S)
-b2.grid_propagate(False)
-index+= 1
-b2 = Button(button_frame, text="Input Output Variable Sizes", command=xml_parser_popup_io, width=20, height = 1)
-b2.grid(column=0,row=index,padx=10,columnspan=2,pady=0,sticky=W+E+N+S)
-b2.grid_propagate(False)
-index+= 1
-b2 = Button(button_frame, text="Annotation to data", command=xml_parser_popup_data, width=20, height = 1)
-b2.grid(column=0,row=index,padx=10,columnspan=2,pady=0,sticky=W+E+N+S)
-b2.grid_propagate(False)
-index+= 1
-b2 = Button(button_frame, text="Other Code (Database)", command=xml_parser_popup_other, width=20, height = 1)
-b2.grid(column=0,row=index,padx=10,columnspan=2,pady=0,sticky=W+E+N+S)
-b2.grid_propagate(False)
-index+=1
-b2 = Button(button_frame, text="Other Code (Network)", command=xml_parser_popup_other2, width=20, height = 1)
-b2.grid(column=0,row=index,padx=10,columnspan=2,pady=0,sticky=W+E+N+S)
-b2.grid_propagate(False)
-index+=1
-'''
-b2 = Button(dataset_frame, text="Compile to python", command=compile_python, width=17, height = 1)
-b2.grid(column=0,row=index,padx=10,columnspan=2,pady=30,sticky=S)
+
+b2 = Button(dataset_frame, text="Compile to python", command=compile_python, width=20, height = 1)
+b2.grid(column=0,row=index,padx=30,columnspan=2,pady=5,sticky=S)
 b2.grid_propagate(False)
 index+= 1
 root.mainloop() # starts the mainloop
