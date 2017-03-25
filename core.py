@@ -207,27 +207,37 @@ def visual_position(a,n=0):
     return a
 
 def draw(module):
-    module.position = (module.position[0]/25)*25,(module.position[1]/25)*25
     if module.selected:
-        w.create_rectangle((module.position[0]-module.width+origin_location[0]),(module.position[1]-40+origin_location[1]), (module.position[0]+module.width+origin_location[0]), (module.position[1]+40+origin_location[1]), fill="red")
+        w.create_rectangle((module.position[0]-module.width+origin_location[0]),(module.position[1]-40+origin_location[1]), (module.position[0]+module.width+origin_location[0]), (module.position[1]+40+origin_location[1]), fill="red",outline="black",width=1)
     else:
-        w.create_rectangle((module.position[0]-module.width+origin_location[0]),(module.position[1]-40+origin_location[1]), (module.position[0]+module.width+origin_location[0]), (module.position[1]+40+origin_location[1]), fill="blue")
+        w.create_rectangle((module.position[0]-module.width+origin_location[0]),(module.position[1]-40+origin_location[1]), (module.position[0]+module.width+origin_location[0]), (module.position[1]+40+origin_location[1]), fill="dim gray",outline="black",width=1)
 
     w.create_text((module.position[0]+origin_location[0]),(module.position[1]+origin_location[1]), fill="yellow",text=module.name,font=("Purisa", 12,tkFont.BOLD))
-    w.create_oval((module.position[0]+origin_location[0]-5-module.width),(module.position[1]+origin_location[1]-5), (module.position[0]+origin_location[0]+5-module.width),(module.position[1]+origin_location[1]+5),fill="red")
-    w.create_oval((module.position[0]+origin_location[0]-5+module.width),(module.position[1]+origin_location[1]-5), (module.position[0]+origin_location[0]+5+module.width),(module.position[1]+origin_location[1]+5),fill="red")
 
     for connection in module.connection_to:
         target = connection.position
-        myline = w.create_line(module.position[0]+origin_location[0]+module.width,module.position[1]+origin_location[1],target[0]+origin_location[0]-connection.width,target[1]+origin_location[1],fill="red",width=4)
+        #print module.position[0]+module.width, (target[0]+module.position[0]-connection.width)/2.0+origin_location[0]
+        #myline = w.create_line(module.position[0]+origin_location[0]+module.width,module.position[1]+origin_location[1],target[0]+origin_location[0]-connection.width,target[1]+origin_location[1],fill="red",width=4)
+        myline = w.create_line(module.position[0]+origin_location[0]+module.width,module.position[1]+origin_location[1],(target[0]+module.position[0]+module.width-connection.width)/2.0+origin_location[0],module.position[1]+origin_location[1],fill="black",width=5)
+        myline = w.create_line((target[0]+module.position[0]+module.width-connection.width)/2.0+origin_location[0],target[1]+origin_location[1],target[0]+origin_location[0]-connection.width,target[1]+origin_location[1],fill="black",width=5)
+        myline = w.create_line((target[0]+module.position[0]+module.width-connection.width)/2.0+origin_location[0],module.position[1]+origin_location[1],(target[0]+module.position[0]+module.width-connection.width)/2.0+origin_location[0],target[1]+origin_location[1],fill="black",width=5)
+        myline = w.create_line(module.position[0]+origin_location[0]+module.width,module.position[1]+origin_location[1],(target[0]+module.position[0]+module.width-connection.width)/2.0+origin_location[0],module.position[1]+origin_location[1],fill="blue",width=3)
+        myline = w.create_line((target[0]+module.position[0]+module.width-connection.width)/2.0+origin_location[0],target[1]+origin_location[1],target[0]+origin_location[0]-connection.width,target[1]+origin_location[1],fill="blue",width=3)
+        myline = w.create_line((target[0]+module.position[0]+module.width-connection.width)/2.0+origin_location[0],module.position[1]+origin_location[1],(target[0]+module.position[0]+module.width-connection.width)/2.0+origin_location[0],target[1]+origin_location[1],fill="blue",width=3)
         w.tag_raise(myline)
+    o1 = w.create_oval((module.position[0]+origin_location[0]-5-module.width),(module.position[1]+origin_location[1]-5), (module.position[0]+origin_location[0]+5-module.width),(module.position[1]+origin_location[1]+5),fill="blue",outline="black",width=1)
+    o2 = w.create_oval((module.position[0]+origin_location[0]-5+module.width),(module.position[1]+origin_location[1]-5), (module.position[0]+origin_location[0]+5+module.width),(module.position[1]+origin_location[1]+5),fill="blue",outline="black",width=1)
+    w.tag_raise(o1)
+    w.tag_raise(o2)
 
+img_background  = None
 def update():
-    global w
+    global w, img_background
     w.after(10,update)
 
     w.delete("all")
     w.create_rectangle(0, 0, 700, 700, fill="black")
+    w.create_image(350+origin_location[0]/3.0,0+origin_location[1]/3.0,image=img_background)
     for module in nodes:
         draw(module)
 
@@ -254,9 +264,41 @@ myzoom = 1
 import math
 def distance(p1,p2):
     return math.sqrt((p1[0]-p2[0])**2+(p1[1]-p2[1])**2)
+
+
 zoomer = False
 mouse_pressed = False
 slider = False
+
+# Canvas window full of wonderful options for modules
+
+current_module_item = None
+def module_popup():
+    global current_module_item
+    win = Toplevel()
+
+    w,h = 650,400
+    popup_frame = Frame(win, width=w, height=h, bg="grey", colormap="new", relief=FLAT, borderwidth=4)
+    popup_frame.grid()
+    ws = root.winfo_screenwidth() # width of the screen
+    hs = root.winfo_screenheight() # height of the screen
+
+    # calculate x and y coordinates for the Tk root window
+    x = (ws/2) - (w/2)
+    y = (hs/2) - (h/2)
+    win.geometry('%dx%d+%d+%d' % (w, h, x, y))
+
+    # Create a customized window that contains information about a particular module.
+
+# Layer module menu
+module_menu = Menu(root, tearoff=0)
+module_menu.add_command(label="Properties", command=module_popup)
+
+def module_menu_event(e,m):
+    global current_module_item
+    current_module_item = m
+    module_menu.post(e.x_root,e.y_root)
+
 def canvas_click(e):
     # Select module that is most close to click
     global mouse_pressed, slider
@@ -281,8 +323,17 @@ origin_location = 350,350
 def canvas_click_2(e):
     global location
     ee = visual_position(e.x,0),visual_position(e.y,1)
+    dist = []
+    for m in (nodes):
+        dist.append((distance(m.position,(ee[0],ee[1])),m))
+    dist.sort()
+    if dist[0][0] < 40:
+        dist[0][1].selected = True
+        module_menu_event(e,dist[0][1])
+        return
     #location = ee[0],ee[1]
     right_click_menu(e)
+
 def canvas_motion(e):
     global mouse_pressed, zoomer, location, myzoom, origin_location
 
@@ -292,6 +343,7 @@ def canvas_motion(e):
         for m in (nodes):
             if m.selected :
                 m.position = ee
+                m.position = (m.position[0]/25)*25,(m.position[1]/25)*25
 
     if slider == True:
         origin_location = origin_location[0]+(ee[0]-visual_position(location[0],0)), origin_location[1]+(ee[1]-visual_position(location[1],1))
@@ -397,6 +449,8 @@ frame_canvas.grid_columnconfigure(0, weight=1)
 frame_canvas.grid_rowconfigure(0, weight=1)
 
 w = Canvas(frame_canvas, width=700, height=700)
+img_background = PhotoImage(file="./deep_learning.gif")
+img_background = img_background.subsample(1,1)
 w.grid(column=0,row=0,columnspan=1,padx=10,pady=10)
 w.create_rectangle(0, 0, 700, 700, fill="black")
 w.bind('<Motion>', canvas_motion)
@@ -588,6 +642,26 @@ dd3.grid(column=0,row=index,padx=30,columnspan=2,pady=0,sticky=W+E+N+S)
 dd3.grid_propagate(False)
 index+= 1
 
+def save():
+    global nodes
+
+    pickle.dump( nodes, open( "nodes.p", "wb" ) )
+    pass
+
+def load():
+    global nodes
+    nodes = pickle.load( open( "nodes.p", "rb" ) )
+    pass
+
+
+
+b2 = Button(dataset_frame, text="Save", command=save, width=7, height = 1)
+b2.grid(column=0,row=index,padx=30,columnspan=2,pady=5,sticky=W+S)
+b2.grid_propagate(False)
+b2 = Button(dataset_frame, text="Load", command=load, width=7, height = 1)
+b2.grid(column=1,row=index,padx=30,columnspan=2,pady=5,sticky=E+S)
+b2.grid_propagate(False)
+index+= 1
 
 b2 = Button(dataset_frame, text="Compile to python", command=compile_python, width=20, height = 1)
 b2.grid(column=0,row=index,padx=30,columnspan=2,pady=5,sticky=S)
